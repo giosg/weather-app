@@ -45,7 +45,7 @@ export class Server {
         this.server.use(bodyParser.urlencoded({ extended: false }));
 
         this.server.get("/install", async (request, response) => {
-            const { headers, query } = request;
+            const { query } = request;
             if (query.type === "install" && query.data && query.redirect_uri) {
                   return await this.handleInstallTrigger({
                       appId: GIOSG_APP_ID,
@@ -82,6 +82,7 @@ export class Server {
                     Authorization: `Token ${accessToken}`,
                 },
             }).then(membershipResponse =>  first(membershipResponse.data.results));
+
             if (visitor) {
                 const { member_id } = visitor;
                 const visitorInformation = await axios.get(`${GIOSG_BASE_URL}/api/v5/users/${user_id}/rooms/${room_id}/visitors/${member_id}`, {
@@ -97,9 +98,9 @@ export class Server {
                 weatherInformation.map(async (item) => {
                     await this.addVisitorVariable(item, {
                         accessToken,
-                    member_id,
-                    organization_id,
-                    room_id,
+                        member_id,
+                        organization_id,
+                        room_id,
                     });
                 });
             }
@@ -117,6 +118,8 @@ export class Server {
         const { main: { temp }, weather } = weatherAPIResponse;
         const { description } = first(weather);
         const descWithUpperCase = capitalize(description);
+        const integerTemp = temp.toFixed(0);
+        const temperature = (Number(integerTemp) > 0) ? "+ " + integerTemp : "- " + integerTemp;
 
         return [
             {
@@ -125,7 +128,7 @@ export class Server {
             },
             {
                 key: "Lämpötila",
-                value: "+ " + temp.toFixed(0) + " \xB0C",
+                value: temperature + " \xB0C",
             },
         ];
     }
