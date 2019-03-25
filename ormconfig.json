@@ -1,0 +1,24 @@
+{
+    "type": "postgres",
+    "host": "localhost",
+    "port": 5436,
+    "username": "postgres",
+    "password": "Ad26W7WkLMeocIA5YU1ix3GbOZpoZO",
+    "database": "hello-world-test",
+    "synchronize": true,
+    "logging": false,
+    "entities": [
+       "entity/*.ts"
+    ],
+    "migrations": [
+       "dist/migration/**/*.js"
+    ],
+    "subscribers": [
+       "dist/subscriber/**/*.js"
+    ],
+    "cli": {
+       "entitiesDir": "src/entity",
+       "migrationsDir": "src/migration",
+       "subscribersDir": "src/subscriber"
+    }
+ }

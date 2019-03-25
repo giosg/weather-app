@@ -1,0 +1,16 @@
+# Dependency directories
+node_modules/
+
+# dotenv environment variables file
+.env
+
+# Ignore docker-data folder
+docker-data/
+
+# Webpack folder should contain compiled and should not be committed to VC
+webpack/
+
+.DS_Store
+
+# Ignores coverage reports by jest
+**coverage

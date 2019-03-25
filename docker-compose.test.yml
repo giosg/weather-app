@@ -1,0 +1,19 @@
+version: '2.1'
+services:
+  postgres:
+    container_name: hello-world-postgres-test
+    restart: always
+    image: sameersbn/postgresql:9.5-3
+    environment:
+      PG_PASSWORD: Ad26W7WkLMeocIA5YU1ix3GbOZpoZO
+      DB_NAME: "hello-world-test"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Ad26W7WkLMeocIA5YU1ix3GbOZpoZO
+    ports:
+      - "5436:5432"
+    volumes:
+      - "./docker-data/postgres/postgresql-test:/var/lib/postgresql"
+    healthcheck:
+      test: ["CMD-SHELL", "psql -U postgres -c 'select 1'"]
+      interval: 20s
+      retries: 5

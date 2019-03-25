@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<title>W3.CSS</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+<h1>Weather app</h1>
+<div id="app">
+</div>
+
+<script>
+	(function onLoad() {
+
+        const app = document.getElementById("app");
+        let container;
+
+		function getLocation() {
+	  		if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(logPosition);
+	  		} else {
+	   			app.innerHTML = "Geolocation is not supported by this browser.";
+	  		}
+		}
+
+		function logPosition({ coords }) {
+            const { latitude: lat, longitude: lon } = coords;
+			const APIKEY = "54310c485ed487a06cf256d6bfae927e"
+			const apiUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}`;
+			fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&APPID=${APIKEY}`)
+            .then(res => res.json())
+            .then(JSON => {
+                let container = `<h2>Current location: <br> ${JSON.name}</h2><div class="w3-container">`;
+                container += buildCard(JSON);    
+                container += '</div>';
+                if(container.indexOf("undefined") >= 0) {
+                    container = container.replace("undefined", "");
+                }
+                app.innerHTML = container;
+            });
+        }
+
+        function buildCard(JSON) {
+            Object.keys(JSON).map((k) => {
+                (typeof(JSON[k]) === 'object') ? buildCard(JSON[k]):
+                container += `<div class="w3-card-4" data-name="${k}">${k}`+ 
+                    `<div class="w3-container w3-center">`+
+                        ` <span> ${createElement(JSON[k], k)} </span>` + 
+                    `</div>` + 
+                `</div>`;
+            });
+            return container;
+        }
+
+        function createElement(content, indicator) {
+            let element;
+            switch(indicator){
+                case 'icon':
+                    element = `<img src="http://openweathermap.org/img/w/${content}.png">`;
+                break;
+                case 'country':
+                    element = `<img src="https://www.countryflags.io/${content}/shiny/64.png">`;
+                    break;
+                case 'visibility':
+                    element = content.toFixed(8).split('.');
+                    element = element[0].replace(/\B(?=(\d{3})+(?!\d))/, ',') + ('.' + element[1]).replace(/\.?0+$/, '') + " m";
+                    break;
+                case 'speed':
+                    element = content + " m/s"
+                    break;
+                case 'temp':
+                case 'temp_min':
+                case 'temp_max':
+                    element = (content - 273.15).toFixed(1) + ' &#176;C';
+                break;
+                case 'sunset':
+                    element = `
+                        <img src="https://images-eu.ssl-images-amazon.com/images/I/61R3F6PEJhL.png" width="20%">
+                        <span>${new Date(content * 1000).toLocaleString()} </span>
+                        `
+                    break;
+                case 'sunrise':
+                    element = `
+                        <img src="https://images-eu.ssl-images-amazon.com/images/I/61R3F6PEJhL.png" width="20%">
+                        <span>${new Date(content * 1000).toLocaleString()} </span>
+                        `
+                break;
+                default:
+                    element = content;
+                break;
+            }
+            return element;
+        }
+
+		getLocation();
+
+	})();
+</script>
+<style>
+
+    body {
+        text-align: center;
+    }
+
+    [data-name="id"], [data-name="type"], [data-name="dt"], [data-name="description"], [data-name="main"],
+    [data-name="base"], [data-name="all"], [data-name="name"], [data-name="cod"], [data-name="message"] {
+        display: none;
+    }
+
+    .w3-container{
+        flex-wrap: wrap;
+        display: flex;
+        justify-content: center;
+        margin: 1rem;
+    }
+    .w3-card-4{
+        flex: 1 0 21%;
+        padding: 1rem;
+        margin: 1rem;
+    }
+</style>
+</html>
