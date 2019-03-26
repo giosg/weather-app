@@ -25,6 +25,7 @@ export interface IUninstallHandlerOptions {
     response: Response;
 }
 
+
 export class Server {
     public server: Express;
     public connection: Connection;
@@ -73,34 +74,31 @@ export class Server {
 
         this.server.post("/webhook", async (request, response) => {
             const { body: { app_user_auth, resource } } = request;
-            const { room_id, room_name, id } = resource;
+            const { room_id, id } = resource;
             const { organization_id, user_id } = app_user_auth;
-            const existingUser = await this.giosgAppInstallationUserRepository.findOne({ organizationId: organization_id });
-            const accessToken = existingUser.accessToken;
-            const visitor = await axios.get(`${GIOSG_BASE_URL}/api/v5/users/${user_id}/routed_chats/${id}/memberships`, {
+            const { accessToken } = await this.giosgAppInstallationUserRepository.findOne({ organizationId: organization_id });
+            const options = {
                 headers: {
                     Authorization: `Token ${accessToken}`,
                 },
-            }).then(membershipResponse =>  first(membershipResponse.data.results));
+            };
 
-            if (visitor) {
-                const { member_id } = visitor;
-                const visitorInformation = await axios.get(`${GIOSG_BASE_URL}/api/v5/users/${user_id}/rooms/${room_id}/visitors/${member_id}`, {
-                    headers: {
-                        Authorization: `Token ${accessToken}`,
-                    },
-                })
-                .then(visitorResponse => visitorResponse.data)
-                .catch(e => console.log(e));
+            const { member_id: visitorId } = await axios.get(`${GIOSG_BASE_URL}/api/v5/users/${user_id}/routed_chats/${id}/memberships`, options)
+                .then(membershipResponse =>  first(membershipResponse.data.results));
+
+            if (visitorId) {
+                const url = `${GIOSG_BASE_URL}/api/v5/users/${user_id}/rooms/${room_id}/visitors/${visitorId}`;
+
+                const visitorInformation = await axios.get(url, options)
+                    .then(visitorResponse => visitorResponse.data);
 
                 const weatherInformation = await this.getWeatherInformation(visitorInformation);
 
                 weatherInformation.map(async (item) => {
-                    await this.addVisitorVariable(item, {
-                        accessToken,
-                        member_id,
+                    await this.addVisitorVariable(item, options, {
                         organization_id,
                         room_id,
+                        visitorId,
                     });
                 });
             }
@@ -108,18 +106,17 @@ export class Server {
         });
     }
 
-    private getWeatherInformation = async (options: any) => {
-        const { geo_city, geo_country_code } = options;
+    private getWeatherInformation = async (params: any) => {
+        const { geo_city, geo_country_code } = params;
+        const url = `http://api.openweathermap.org/data/2.5/weather?q=${geo_city}&units=metric&lang=${geo_country_code}&appid=${API_KEY}`;
 
-        const weatherAPIResponse = await axios.get(`http://api.openweathermap.org/data/2.5/weather?q=${geo_city}&units=metric&lang=${geo_country_code}&appid=${API_KEY}`)
-            .then(apiResponse => apiResponse.data)
-            .catch(error => console.log(error));
+        const weatherAPIResponse = await axios.get(url)
+            .then(apiResponse => apiResponse.data);
 
         const { main: { temp }, weather } = weatherAPIResponse;
         const { description } = first(weather);
         const descWithUpperCase = capitalize(description);
         const integerTemp = temp.toFixed(0);
-        const temperature = (Number(integerTemp) > 0) ? "+ " + integerTemp : "- " + integerTemp;
 
         return [
             {
@@ -128,20 +125,16 @@ export class Server {
             },
             {
                 key: "Lämpötila",
-                value: temperature + " \xB0C",
+                value: integerTemp + " \xB0C",
             },
         ];
     }
 
-    private addVisitorVariable = async (variable: any, options: any) => {
+    private addVisitorVariable = async (variable: any, options: any, params: any) => {
         const { key, value } = variable;
-        const { organization_id, room_id, member_id, accessToken } = options;
-        await axios.post(`${GIOSG_BASE_URL}/api/v5/orgs/${organization_id}/rooms/${room_id}/visitors/${member_id}/variables`, { key, value },
-            {
-            headers: {
-                Authorization: `Token ${accessToken}`,
-            },
-        }).catch(e => console.log(e));
+        const { organization_id, room_id, visitorId } = params;
+        const url = `${GIOSG_BASE_URL}/api/v5/orgs/${organization_id}/rooms/${room_id}/visitors/${visitorId}/variables`;
+        await axios.post(url, { key, value }, options);
     }
 
     private handleInstallTrigger = async (options: IInstallHandlerOptions, connection: Connection) => {
