@@ -25,6 +25,13 @@ export interface IUninstallHandlerOptions {
     response: Response;
 }
 
+export interface IAppFromNavTriggerOptions {
+    appId: string;
+    appSecret: string;
+    giosgDataToken: string;
+    redirectUri: string;
+    response: Response;
+}
 
 export class Server {
     public server: Express;
@@ -48,23 +55,34 @@ export class Server {
         this.server.get("/install", async (request, response) => {
             const { query } = request;
             if (query.type === "install" && query.data && query.redirect_uri) {
-                  return await this.handleInstallTrigger({
-                      appId: GIOSG_APP_ID,
-                      appSecret: GIOSG_APP_SECRET,
-                      giosgDataToken: query.data,
-                      redirectUri: query.redirect_uri,
-                      response,
-                  }, this.connection);
+                return await this.handleInstallTrigger({
+                    appId: GIOSG_APP_ID,
+                    appSecret: GIOSG_APP_SECRET,
+                    giosgDataToken: query.data,
+                    redirectUri: query.redirect_uri,
+                    response,
+                }, this.connection);
               }
 
             if (query.type === "uninstall" && query.data) {
-                  return await this.handleUninstallTrigger({
-                      appId: GIOSG_APP_ID,
-                      appSecret: GIOSG_APP_SECRET,
-                      giosgDataToken: query.data,
-                      response,
-                  });
-              }
+                return await this.handleUninstallTrigger({
+                    appId: GIOSG_APP_ID,
+                    appSecret: GIOSG_APP_SECRET,
+                    giosgDataToken: query.data,
+                    response,
+                });
+            }
+
+            if (query.type === "manual_nav" && query.data) {
+                return await this.handleAppFromNavTrigger({
+                    appId: GIOSG_APP_ID,
+                    appSecret: GIOSG_APP_SECRET,
+                    giosgDataToken: query.data,
+                    redirectUri: query.redirect_uri,
+                    response,
+                }, this.connection);
+            }
+
             return response.sendStatus(200);
           });
 
@@ -77,25 +95,25 @@ export class Server {
             const { room_id, id } = resource;
             const { organization_id, user_id } = app_user_auth;
             const { accessToken } = await this.giosgAppInstallationUserRepository.findOne({ organizationId: organization_id });
-            const options = {
+            const header = {
                 headers: {
                     Authorization: `Token ${accessToken}`,
                 },
             };
 
-            const { member_id: visitorId } = await axios.get(`${GIOSG_BASE_URL}/api/v5/users/${user_id}/routed_chats/${id}/memberships`, options)
+            const { member_id: visitorId } = await axios.get(`${GIOSG_BASE_URL}/api/v5/users/${user_id}/routed_chats/${id}/memberships`, header)
                 .then(membershipResponse =>  first(membershipResponse.data.results));
 
             if (visitorId) {
                 const url = `${GIOSG_BASE_URL}/api/v5/users/${user_id}/rooms/${room_id}/visitors/${visitorId}`;
 
-                const visitorInformation = await axios.get(url, options)
+                const visitorInformation = await axios.get(url, header)
                     .then(visitorResponse => visitorResponse.data);
 
                 const weatherInformation = await this.getWeatherInformation(visitorInformation);
 
                 weatherInformation.map(async (item) => {
-                    await this.addVisitorVariable(item, options, {
+                    await this.addVisitorVariable(item, header, {
                         organization_id,
                         room_id,
                         visitorId,
@@ -130,11 +148,11 @@ export class Server {
         ];
     }
 
-    private addVisitorVariable = async (variable: any, options: any, params: any) => {
+    private addVisitorVariable = async (variable: any, header: any, params: any) => {
         const { key, value } = variable;
         const { organization_id, room_id, visitorId } = params;
         const url = `${GIOSG_BASE_URL}/api/v5/orgs/${organization_id}/rooms/${room_id}/visitors/${visitorId}/variables`;
-        await axios.post(url, { key, value }, options);
+        await axios.post(url, { key, value }, header);
     }
 
     private handleInstallTrigger = async (options: IInstallHandlerOptions, connection: Connection) => {
@@ -196,4 +214,33 @@ export class Server {
             }
         });
     }
+
+    private handleAppFromNavTrigger = async (options: IAppFromNavTriggerOptions,  connection: Connection) => {
+        const { appSecret, giosgDataToken, response } = options;
+        return await verify(giosgDataToken, appSecret, async (verifyError: any, decodedToken: any) => {
+            const { app_user_id, org_id } = decodedToken as IGiosgDataToken;
+            const { accessToken } = await this.giosgAppInstallationUserRepository.findOne({ id: app_user_id });
+            const allChatsUrl = `${GIOSG_BASE_URL}/api/v5/orgs/${org_id}/owned_chats`;
+            const header = {
+                headers: {
+                    Authorization: `Token ${accessToken}`,
+                },
+            };
+            return await axios.get(allChatsUrl, header)
+                .then((ownedChatsResponse: any) => ownedChatsResponse.data.results)
+                .then(chats => chats.map(async (chat: any) => {
+                    const { id } = chat;
+                    const membershipsUrl = `${allChatsUrl}/${id}/memberships`;
+                    return await axios.get(membershipsUrl, header)
+                        .then(membershipResponse => membershipResponse.data.results)
+                        .then(async (membership: any) => {
+                            if (membership) {
+                                const { member_id } = first(membership);
+                                return member_id;
+                            }
+                        });
+                }))
+                .then(IdsPromise => Promise.all(IdsPromise).then((ids) => response.send(ids)));
+            });
+        }
 }
