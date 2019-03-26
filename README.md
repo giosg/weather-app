@@ -17,7 +17,7 @@ Before you begin, make sure your development environment includes Node.js® and 
 
 # Step 1: Create a workspace
 
-NOTE: We will be using Mac OS. Commands I use may differ depending on your operating system. Simple google search will help you find the right commands for your operating system.
+**NOTE**: We will be using Mac OS. Commands I use may differ depending on your operating system. Simple google search will help you find the right commands for your operating system.
 
 Make a directory for your project. You can also skip these steps and clone a skeleton project from the github.
 
@@ -41,6 +41,8 @@ code . // Dot represents current directory in this context
 
 # Step 2: Create your first app
 
+**NOTE**: Hello World instructions up-to-date can be found for expressjs can be found behind this [link](https://expressjs.com/en/starter/hello-world.html)
+
 Create app.js file inside your working directory.
 You can copy paste code down bellow.
 
@@ -54,12 +56,11 @@ app.get('/', (req, res) => res.send('Hello World!')) // Send simple "Hello World
 app.listen(port, () => console.log(`Example app listening on port ${port}!`)) // Starts express app
 ```
 
-Note: Hello World instructions up-to-date can be found for expressjs can be found behind this [link](https://expressjs.com/en/starter/hello-world.html)
-
 # Step 3: Make your app available to the internet
 
+**NOTE:** Instructions to setup ngrok can be found on their website [ngrok](https://ngrok.com)
+
 Using simple app "Ngrok" you can forward your localhost to be available outside of your local environment.
-Instructions to setup ngrok can be found on their website [ngrok](https://ngrok.com)
 
 To run ngrok, you can simply type
 ```
